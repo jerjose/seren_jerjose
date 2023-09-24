@@ -31,6 +31,79 @@ def dispatch(params):
 
         homeMenu.Menus().home()
 
+    elif action == "movieIndian":
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_indian()
+
+    elif action == "movieMalayalam":
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_malayalam()
+
+    elif action == "movieTamil":
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_tamil()
+
+    elif action == "movieIndian1TamilMV":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_indian_1tamilmv(action_args)
+
+    elif action == "movieMalayalamCam":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_malayalam_cam()
+
+    elif action == "movieMalayalamBluRay":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_malayalam_bluray()
+
+    elif action == "movieTamilCam":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_tamil_cam()
+
+    elif action == "movieTamilBluRay":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_tamil_bluray()
+
+    elif action == "movieIndianPopular":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_indian_popular(action_args)
+
+    elif action == "movieIndianRecent":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_indian_recent(action_args)
+
+    elif action == "movieIndianYears":
+
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_indian_years(action_args)
+
+    elif action == "movieMalayalamYearsResults":
+        from resources.lib.gui import movieMenus
+
+        movieMenus.Menus().movie_malayalam_years_results(action_args)
+
+    elif action == "movieTamilYearsResults":
+        from resources.lib.gui.movieMenus import Menus
+
+        Menus().movie_tamil_years_results(action_args)
+
     elif action == "genericEndpoint":
         if mediatype == "movies":
             from resources.lib.gui.movieMenus import Menus
