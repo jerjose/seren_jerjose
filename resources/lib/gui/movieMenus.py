@@ -60,6 +60,12 @@ class Menus:
     @staticmethod
     def discover_movies():
         g.add_directory_item(
+            "Indian Movies",
+            action="movieIndian",
+            description="Home for indian movies",
+            menu_item=g.create_icon_dict("movies_popular", g.ICONS_PATH),
+        )
+        g.add_directory_item(
             g.get_language_string(30004),
             action="genericEndpoint",
             mediatype="movies",
@@ -465,3 +471,277 @@ class Menus:
     def my_watched_movies(self):
         watched_movies = self.movies_database.get_watched_movies(g.PAGE)
         self.list_builder.movie_menu_builder(watched_movies)
+
+    def movie_indian(self):
+        g.add_directory_item("Malayalam", action="movieMalayalam")
+        g.add_directory_item("Tamil", action="movieTamil")
+        g.close_directory(g.CONTENT_MENU)
+
+    def movie_malayalam(self):
+        g.add_directory_item("1tamilmv", action="movieIndian1TamilMV", action_args="ml")
+        g.add_directory_item("Popular", action="movieIndianPopular", action_args="ml")
+        g.add_directory_item("Recent", action="movieIndianRecent", action_args="ml")
+        g.add_directory_item("Years", action="movieIndianYears", action_args="ml")
+        g.close_directory(g.CONTENT_MENU)
+
+    def movie_tamil(self):
+        g.add_directory_item("1tamilmv", action="movieIndian1TamilMV", action_args="ta")
+        g.add_directory_item("Popular", action="movieIndianPopular", action_args="ta")
+        g.add_directory_item("Recent", action="movieIndianRecent", action_args="ta")
+        g.add_directory_item("Years", action="movieIndianYears", action_args="ta")
+        g.close_directory(g.CONTENT_MENU)
+
+    def movie_indian_1tamilmv(self, language):
+        if language == "ml":
+            self.movie_malayalam_1tamilmv()
+        if language == "ta":
+            self.movie_tamil_1tamilmv()
+
+    def movie_malayalam_1tamilmv(self):
+        g.add_directory_item("PreDVD / DVDScr / CAM / TC", action="movieMalayalamCam")
+        g.add_directory_item("WEB-HD / iTunes-HD / BluRay", action="movieMalayalamBluRay")
+        g.close_directory(g.CONTENT_MENU)
+
+    def extract_posts_1tamilmv(self, url):
+        from bs4 import BeautifulSoup
+        import requests
+        import re
+
+        def find_h4tags_url(url):
+            # Make a request to the website
+            r = requests.get(url)
+            r_content = r.text
+
+            # Create a BeautifulSoup object and specify the parser
+            soup = BeautifulSoup(r_content, 'html.parser')
+
+            # Find all h4 tags with the class 'string'
+            h4_tags = soup.find_all('h4', class_='ipsDataItem_title')
+            last_page = int(soup.find_all('li', class_='ipsPagination_last')[0].find('a').get('data-page'))
+            return [h4_tags, last_page]
+
+        def extract_title_year_1tamilmv(post_title):
+            post_title = post_title.strip()
+            matches = re.search(re.compile(r'^(.+)\s+\((\d{4})\)'), post_title)
+            if matches:
+                title = matches[1]
+                year = matches[2]
+                return {'full_title': title+" "+year, 'title': title, 'year': year}
+            else:
+                return None
+
+        [h4_tags, last_page] = find_h4tags_url(url)
+        if last_page > 5:
+            last_page = 6
+
+        movie_list = []
+        for page in range(1, last_page+1):
+            if page != 0:
+                new_url = url + "page/" + str(page)
+                [h4_tags, tmp] = find_h4tags_url(new_url)
+
+            # Extract href links from h4 tags
+            for tag in h4_tags:
+                link = tag.find('a')
+                if link is not None and re.search('topic', link.get('href'), re.IGNORECASE):
+                    print(link.get('title'))
+                    movie = extract_title_year_1tamilmv(link.get('title'))
+                    if movie is None:
+                        continue
+                    print(movie)
+                    if movie['full_title'] not in [m['full_title'] for m in movie_list]:
+                        movie_list.append(movie)
+
+        return movie_list
+
+    def movie_indian_trakt_list(self, movie_list, language):
+        trakt_list = []
+        for movie in movie_list:
+            query = movie['title']
+            year = movie['year']
+            movie_result = self.movies_database.extract_trakt_page(
+                "search/movie",
+                query=query,
+                #languages=language,
+                countries="in",
+                years=year,
+                fields="title,aliases",
+                extended="full",
+                no_paging=1,
+                hide_watched=False,
+                hide_unaired=False,
+            )
+            if movie_result:
+                trakt_list.append(movie_result[0])
+
+        return trakt_list
+    def movie_malayalam_cam(self):
+        url = "https://www.1tamilmv.nexus/index.php?/forums/forum/35-predvd-dvdscr-cam-tc/"
+        movie_list = self.extract_posts_1tamilmv(url)
+
+        trakt_list = self.movie_indian_trakt_list(movie_list, "ml")
+        trakt_list = trakt_list[self.page_limit * (g.PAGE - 1): self.page_limit * g.PAGE]
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+
+    def movie_malayalam_bluray(self):
+        url = "https://www.1tamilmv.nexus/index.php?/forums/forum/36-web-hd-itunes-hd-bluray/"
+        movie_list = self.extract_posts_1tamilmv(url)
+
+        trakt_list = self.movie_indian_trakt_list(movie_list, "ml")
+        trakt_list = trakt_list[self.page_limit * (g.PAGE - 1): self.page_limit * g.PAGE]
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+    def movie_tamil_1tamilmv(self):
+        g.add_directory_item("PreDVD / DVDScr / CAM / TC", action="movieTamilCam")
+        g.add_directory_item("WEB-HD / iTunes-HD / BluRay", action="movieTamilBluRay")
+        g.close_directory(g.CONTENT_MENU)
+
+    def movie_tamil_cam(self):
+        url = "https://www.1tamilmv.nexus/index.php?/forums/forum/10-predvd-dvdscr-cam-tc/"
+        movie_list = self.extract_posts_1tamilmv(url)
+
+        trakt_list = self.movie_indian_trakt_list(movie_list, "ta")
+        trakt_list = trakt_list[self.page_limit * (g.PAGE - 1): self.page_limit * g.PAGE]
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+    def movie_tamil_bluray(self):
+        url = "https://www.1tamilmv.nexus/index.php?/forums/forum/11-web-hd-itunes-hd-bluray/"
+        movie_list = self.extract_posts_1tamilmv(url)
+
+        trakt_list = self.movie_indian_trakt_list(movie_list, "ta")
+        trakt_list = trakt_list[self.page_limit * (g.PAGE - 1): self.page_limit * g.PAGE]
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+    def movie_indian_popular(self, language):
+        trakt_list = self.movies_database.extract_trakt_page(
+            "search/movie",
+            query="",
+            languages=language,
+            countries="in",
+            fields="title,aliases",
+            extended="full",
+            page=g.PAGE,
+            hide_watched=False,
+            hide_unaired=False,
+        )
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+
+    def movie_indian_recent(self, language):
+        from datetime import datetime as dt
+        trakt_list = self.movies_database.extract_trakt_page(
+            "search/movie",
+            query="",
+            languages=language,
+            countries="in",
+            years=str(dt.today().year),
+            fields="title,aliases",
+            extended="full",
+            no_paging=1,
+            hide_watched=False,
+            hide_unaired=False,
+        )
+
+        for list in trakt_list:
+            if ('premiered' not in list['trakt_object']['info']):
+                if ('aired' in list['trakt_object']['info']):
+                    g.log("Changed premiered to aired")
+                    list['trakt_object']['info']['premiered'] = list['trakt_object']['info']['aired']
+                else:
+                    if ('dateadded' in list['trakt_object']['info']):
+                        g.log("Changed premiered to dateadded")
+                        list['trakt_object']['info']['premiered'] = list['trakt_object']['info']['dateadded']
+                    else:
+                        g.log("Changed premiered to 0")
+                        list['trakt_object']['info']['premiered'] = g.datetime_to_string(datetime.date.today()-datetime.timedelta(days=1))
+
+        trakt_list = sorted(trakt_list, key=lambda k: (k['trakt_object']['info']['premiered']), reverse=True)
+
+        today = g.datetime_to_string(datetime.date.today())
+        trakt_list = [x for x in trakt_list if x['trakt_object']['info']['premiered'] < today]
+
+        trakt_list = trakt_list[self.page_limit * (g.PAGE - 1): self.page_limit * g.PAGE]
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+    def movie_indian_years(self, language):
+        from datetime import datetime
+
+        year = int(datetime.today().year)
+
+        for year in range(year, 1899, -1):
+            if language == "ml":
+                g.add_directory_item(str(year), action="movieMalayalamYearsResults", action_args=year)
+            if language == "ta":
+                g.add_directory_item(str(year), action="movieTamilYearsResults", action_args=year)
+        g.close_directory(g.CONTENT_MENU)
+
+    def movie_malayalam_years_results(self, year):
+        trakt_list = self.movies_database.extract_trakt_page(
+            "search/movie",
+            query="",
+            languages="ml",
+            countries="in",
+            years=str(year),
+            fields="title,aliases",
+            extended="full",
+            page=g.PAGE,
+            hide_watched=False,
+            hide_unaired=False,
+        )
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
+
+    def movie_tamil_years_results(self, year):
+        trakt_list = self.movies_database.extract_trakt_page(
+            "search/movie",
+            query="",
+            languages="ta",
+            countries="in",
+            years=str(year),
+            fields="title,aliases",
+            extended="full",
+            page=g.PAGE,
+            hide_watched=False,
+            hide_unaired=False,
+        )
+
+        if not trakt_list:
+            g.cancel_directory()
+            return
+
+        self.list_builder.movie_menu_builder(trakt_list,hide_watched=False,hide_unaired=False)
